@@ -1,0 +1,37 @@
+# Use an official Ubuntu as a base image
+FROM ubuntu:latest
+
+# Install necessary packages
+RUN apt-get update && \
+    apt-get install -y sudo curl apache2 apache2-dev && \
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+
+# Update needrestart.conf
+RUN sed -i "s/#\$nrconf{restart} = 'i';/\$nrconf{restart} = 'a';/" /etc/needrestart/needrestart.conf
+
+# Set up NVM
+ENV NVM_DIR="/usr/local/nvm"
+RUN mkdir -p $NVM_DIR && \
+    chown -R root:root $NVM_DIR
+
+# Configure NVM environment
+RUN echo "export NVM_DIR=/usr/local/nvm" >> /etc/bash.bashrc && \
+    echo "[ -s \$NVM_DIR/nvm.sh ] && . \$NVM_DIR/nvm.sh" >> /etc/bash.bashrc
+
+# Install Node.js
+RUN . /etc/bash.bashrc && \
+    nvm install v18.16.0 && \
+    nvm use v18.16.0 && \
+    nvm alias default v18.16.0 && \
+    ln -sf $NVM_DIR/versions/node/v18.16.0/bin/node /usr/bin/node && \
+    ln -sf $NVM_DIR/versions/node/v18.16.0/bin/npm /usr/bin/npm
+
+# Cleanup and finalize
+RUN apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Expose Apache port
+EXPOSE 80
+
+# Start Apache
+CMD ["apache2ctl", "-D", "FOREGROUND"]
